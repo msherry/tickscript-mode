@@ -43,7 +43,6 @@
 (defvar tickscript-nodes nil)
 (defvar tickscript-chaining-methods nil)
 
-
 (defgroup tickscript nil
   "TICKscript support for Emacs."
   :group 'languages
@@ -69,6 +68,38 @@
   :group 'tickscript
   :safe 'integerp)
 
+(defface tickscript-property
+  '((t :inherit font-lock-keyword-face))
+  "Face for properties in TICKscript, like align, groupBy, period, etc."
+  :tag "tickscript-property"
+  :group 'tickscript)
+
+(defface tickscript-node
+  '((t :inherit font-lock-type-face))
+  "Face for nodes in TICKscript, like alert, batch, query, groupBy, etc."
+  :tag "tickscript-node"
+  :group 'tickscript)
+
+(defface tickscript-variable
+  '((t :inherit font-lock-variable-name-face))
+  "Face for variables in TICKscript."
+  :tag "tickscript-variable"
+  :group 'tickscript)
+
+(defface tickscript-time
+  '((t :inherit font-lock-constant-face))
+  "Face for time ranges in TICKscript, like 1h, 20us, etc.."
+  :tag "tickscript-time"
+  :group 'tickscript)
+
+(defface tickscript-operator
+  '((t :inherit font-lock-warning-face
+     :foreground "#bf3d5e"))
+  "Face used for highlighting operators like \"|\" and \"/\" in TICKscript."
+  :tag "tickscript-operator"
+  :group 'tickscript)
+
+
 (setq tickscript-properties
       '("align" "alignGroup" "buffer" "byMeasurement" "cluster" "create" "cron"
         "database" "every" "fill" "flushInterval" "groupBy" "groupByMeasurement"
@@ -79,33 +110,29 @@
       '("batch" "stream"))
 
 (setq tickscript-nodes
-      '("alert" "batch" "combine" "default" "delete" "derivative"
-        "eval" "flatten" "from" "groupBy" "httpOut" "httpPost" "influxDBOut"
-        "influxQL" "join" "k8sAutoscale" "kapacitorLoopback" "log" "noOp"
-        "query" "sample" "shift" "stateCount" "stateDuration" "stats" "stream" "uDF"
+      '("alert" "batch" "bottom" "combine" "count" "cumulativeSum" "deadman"
+        "default" "delete" "derivative" "difference" "distinct" "elapsed"
+        "eval" "exclude" "first" "flatten" "groupBy" "holtWinters"
+        "holtWintersWithFit" "httpOut" "httpPost" "influxDBOut" "join"
+        "kapacitorLoopback" "last" "log" "max" "mean" "median" "min" "mode"
+        "movingAverage" "percentile" "query" "sample" "shift" "spread"
+        "stateCount" "stateDuration" "stats" "stddev" "stream" "sum" "top"
         "union" "where" "window"))
-
-(setq tickscript-chaining-methods
-      '("alert" "bottom" "combine" "count" "cumulativeSum" "deadman" "default"
-        "delete" "derivative" "difference" "distinct" "elapsed" "eval" "exclude"
-        "first" "flatten" "groupBy" "holtWinters" "holtWintersWithFit" "httpOut"
-        "httpPost" "influxDBOut" "join" "kapacitorLoopback" "last" "log" "max"
-        "mean" "median" "min" "mode" "movingAverage" "percentile" "sample"
-        "shift" "spread" "stateCount" "stateDuration" "stats" "stddev" "sum"
-        "top" "union" "where" "window"))
 
 (setq tickscript-font-lock-keywords
       `(,
         ;; General keywords
         (rx symbol-start (or "var") symbol-end)
-        (,(concat "\\_<" (regexp-opt tickscript-properties t) "\\_>") . font-lock-keyword-face)
-        (,(concat "\\_<" (regexp-opt tickscript-nodes t) "\\_>") . font-lock-type-face)
-        (,(concat "\\_<" (regexp-opt tickscript-chaining-methods t) "\\_>") . font-lock-function-name-face)
-        (,(concat "\\_<" (regexp-opt tickscript-properties t) "\\_>") . font-lock-keyword-face)
+        ;; Node properties
+        (,(concat "\\_<" (regexp-opt tickscript-properties t) "\\_>") . 'tickscript-property)
+        ;; Nodes
+        (,(concat "\\_<" (regexp-opt tickscript-nodes t) "\\_>") . 'tickscript-node)
         ;; Time units
-        (,(rx symbol-start (1+ digit) (or "u" "µ" "ms" "s" "m" "h" "d" "w") symbol-end) . font-lock-constant-face)
+        (,(rx symbol-start (1+ digit) (or "u" "µ" "ms" "s" "m" "h" "d" "w") symbol-end) . 'tickscript-time)
+        ;; Operators
+        (,(rx (or "/" "\|")) . 'tickscript-operator)
         ;; Variable declarations
-        ("\\_<\\(?:var\\)\\_>[[:space:]]+\\([[:alpha:]]\\(?:[[:alnum:]]\\|_\\)*\\)" (1 font-lock-variable-name-face nil nil))))
+        ("\\_<\\(?:var\\)\\_>[[:space:]]+\\([[:alpha:]]\\(?:[[:alnum:]]\\|_\\)*\\)" (1 'tickscript-variable nil nil))))
 
 (defconst tickscript-mode-syntax-table
   (let ((table (make-syntax-table)))
@@ -266,7 +293,6 @@ current indentation context."
               (nodetok (tickscript-at-node))
               (node-indent (tickscript-node-indentation
                             (- (point) tickscript-max-block-lookback))))
-          (message "%s %s %s" proptok nodetok node-indent)
           (max 0 (+ (or node-indent 0)
                     (cond (proptok tickscript-indent-offset)
                           ;; Only dedent this as a node if we're on a node and the previous
