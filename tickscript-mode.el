@@ -24,8 +24,16 @@
 ;;; Commentary:
 ;; Copyright Marc Sherry <msherry@gmail.com>
 ;;
-;; This package provides a major mode for working with TICKscript, a DSL for
-;; use with Kapacitor and InfluxDB.
+;; This package provides a major mode for working with TICKscript
+;; (https://docs.influxdata.com/kapacitor/v1.3/tick/), a DSL for use with
+;; Kapacitor and InfluxDB.
+;;
+;; Usage:
+;;
+;; Add the following to your .init.el:
+;;
+;;     (add-to-list 'load-path "path-to-tickscript-mode")
+;;     (require 'tickscript-mode)
 
 ;;; Code:
 
@@ -54,9 +62,9 @@
   :group 'tickscript)
 
 (defcustom tickscript-max-block-lookback 5000
-  "When indenting, don't look back more than this many characters.
+  "When indenting, don't look back more than this many characters."
 
-This should be eliminated, I'm just copying from julia-mode for now."
+  ;; TODO: This should be eliminated, I'm just copying from julia-mode for now.
   :type 'integer
   :group 'tickscript
   :safe 'integerp)
@@ -146,7 +154,8 @@ KW-LIST is a list of strings."
 To be a node, it must be a keyword in the nodes list, and either
 be preceded by the \"|\" sigil, or no sigil.  Specifically, it
 must not be preceded by \".\", as some keywords (like \"groupBy\"
-are both properties and nodes."
+are both properties and nodes.  If TOPLEVEL-ONLY is specified,
+only toplevel nodes \"batch\" and \"stream\" are checked."
   ;; Skip over any sigil, if present
   (save-excursion
     (when (looking-at "|")
@@ -230,8 +239,8 @@ meaning always increase indent on TAB and decrease on S-TAB."
          0)))
 
 (defun tickscript-indent-dedent-line ()
-  "Deindent by `tickscript-indent-offset' regardless of current
-indentation context."
+  "Deindent by `tickscript-indent-offset' spaces regardless of
+current indentation context."
   (interactive)
   (indent-line-to (max 0 (- (current-indentation) tickscript-indent-offset))))
 
