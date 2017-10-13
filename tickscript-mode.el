@@ -63,6 +63,14 @@
   :group 'tickscript
   :safe 'stringp)
 
+(defcustom tickscript-kapacitor-url ""
+  "The URL host/port of the Kapacitor server.
+
+If unset, defaults to \"http://localhost:9092\"."
+  :type 'string
+  :group 'tickscript
+  :safe 'stringp)
+
 (defcustom tickscript-indent-trigger-commands
   '(indent-for-tab-command yas-expand yas/expand)
   "Commands that might trigger a `tickscript-indent-line' call."
@@ -410,6 +418,12 @@ current indentation context."
       (add-file-local-variable 'tickscript-series-dbrp resp)
       resp)))
 
+(defun tickscript--kapacitor-base-cmd ()
+  "The command used to run `kapacitor', including the -url option."
+  (if (and tickscript-kapacitor-url
+           (not (string= tickscript-kapacitor-url "")))
+      (format "%s -url %s" tickscript-kapacitor-prog-name tickscript-kapacitor-url)
+    tickscript-kapacitor-prog-name))
 
 (defun tickscript-define-task ()
   "Use Kapacitor to define the current task.
@@ -425,7 +439,7 @@ file comments for later re-use."
          (dbrp (tickscript--deftask-get-series-dbrp))
          (filename (file-name-nondirectory (buffer-file-name)))
          (cmd (format "%s define %s -type %s -tick %s -dbrp %s"
-                      tickscript-kapacitor-prog-name name type filename dbrp))
+                      (tickscript--kapacitor-base-cmd) name type filename dbrp))
          (results (shell-command-to-string (format "echo -n \"%s - \" ; RESULT=`%s 2>&1`&& echo -n SUCCESS || echo FAILURE && echo -n $RESULT" cmd cmd))))
     (message results)))
 
@@ -435,9 +449,10 @@ file comments for later re-use."
   (interactive)
   (let* ((name (tickscript--deftask-get-series-name))
          (task (shell-command-to-string (format "%s show %s"
-                                                tickscript-kapacitor-prog-name name))))
-    (with-output-to-temp-buffer "*tickscript-task*"
-      (switch-to-buffer-other-window "*tickscript-task*")
+                                                tickscript-kapacitor-prog-name name)))
+         (buffer-name "*tickscript-task*"))
+    (with-output-to-temp-buffer buffer-name
+      (switch-to-buffer-other-window buffer-name)
       (set (make-local-variable 'font-lock-defaults) '(tickscript-font-lock-keywords))
       (font-lock-mode)
       (insert task))))
