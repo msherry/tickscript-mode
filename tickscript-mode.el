@@ -42,7 +42,9 @@
 (defvar tickscript-toplevel-nodes nil)
 (defvar tickscript-nodes nil)
 (defvar tickscript-chaining-methods nil)
-(defvar tickscript-define-cmd nil)
+(defvar tickscript-series-name nil)
+(defvar tickscript-series-type nil)
+(defvar tickscript-series-dbrp nil)
 
 (defgroup tickscript nil
   "TICKscript support for Emacs."
@@ -157,7 +159,7 @@
     (define-key map (kbd "<M-down>") 'tickscript-move-line-or-region-down)
     (define-key map (kbd "<M-up>") 'tickscript-move-line-or-region-up)
     ;; Util
-    (define-key map "\C-c\C-c" 'tickscript-check)
+    (define-key map (kbd "C-c C-c") 'tickscript-define-task)
     map)
   "Keymap for `tickscript-mode'.")
 
@@ -364,14 +366,48 @@ current indentation context."
     (setq deactivate-mark nil)))
 
 
+(defun tickscript--deftask-get-series-name ()
+  (if tickscript-series-name
+      tickscript-series-name
+    (let ((resp (read-string "Series name: ")))
+      (setq tickscript-series-name resp)
+      (add-file-local-variable 'tickscript-series-name resp)
+      resp)))
+
+
+(defun tickscript--deftask-get-series-type ()
+  (if tickscript-series-type
+      tickscript-series-type
+    (let ((resp (read-string "Series type (batch/stream): ")))
+      (unless (member resp '("batch" "stream"))
+        (error "Must specify \"batch\" or \"stream\""))
+      (setq tickscript-series-type resp)
+      (add-file-local-variable 'tickscript-series-type resp)
+      resp)))
+
+
+(defun tickscript--deftask-get-series-dbrp ()
+  (if tickscript-series-dbrp
+      tickscript-series-dbrp
+    (let ((resp (read-string "Series DBRP (database.retention_policy): ")))
+      (setq tickscript-series-dbrp resp)
+      (add-file-local-variable 'tickscript-series-dbrp resp)
+      resp)))
+
+
 (defun tickscript-define-task ()
   "Use Kapacitor to define the current task.
-NOTE: currently depends on the define command being set in the
-buffer-local variable `tickscript-define-cmd'."
+
+Prompts for any information needed to define the task, and then
+calls Kapacitor to define it.  This information is cached in the
+file comments for later re-use."
   (interactive)
   (save-buffer)
-  (let ((tickscript-dir default-directory)
-        (cmd tickscript-define-cmd))
+  (let* ((name (tickscript--deftask-get-series-name))
+         (type (tickscript--deftask-get-series-type))
+         (dbrp (tickscript--deftask-get-series-dbrp))
+         (filename (file-name-nondirectory (buffer-file-name)))
+         (cmd (format "kapacitor define %s -type %s -tick %s -dbrp %s" name type filename dbrp)))
     (with-temp-buffer (compilation-start cmd 'compilation-mode))))
 
 
@@ -386,7 +422,13 @@ buffer-local variable `tickscript-define-cmd'."
 
   (set (make-local-variable 'comment-start) "// ")
 
-  (set (make-local-variable 'indent-line-function) 'tickscript-indent-line))
+  (set (make-local-variable 'indent-line-function) 'tickscript-indent-line)
+
+  ;; Task definition
+  (set (make-local-variable 'tickscript-series-name) nil)
+  (set (make-local-variable 'tickscript-series-type) nil)
+  (set (make-local-variable 'tickscript-series-dbrp) nil)
+  )
 
 ;;;###autoload
 (add-to-list 'auto-mode-alist '("\\.tick\\'" . tickscript-mode))
