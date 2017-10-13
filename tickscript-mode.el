@@ -57,6 +57,12 @@
   :group 'tickscript
   :safe 'integerp)
 
+(defcustom tickscript-kapacitor-prog-name "kapacitor"
+  "The name of the executable used to invoke Kapacitor."
+  :type 'string
+  :group 'tickscript
+  :safe 'stringp)
+
 (defcustom tickscript-indent-trigger-commands
   '(indent-for-tab-command yas-expand yas/expand)
   "Commands that might trigger a `tickscript-indent-line' call."
@@ -160,6 +166,7 @@
     (define-key map (kbd "<M-up>") 'tickscript-move-line-or-region-up)
     ;; Util
     (define-key map (kbd "C-c C-c") 'tickscript-define-task)
+    (define-key map (kbd "C-c C-v") 'tickscript-show-task)
     map)
   "Keymap for `tickscript-mode'.")
 
@@ -407,9 +414,22 @@ file comments for later re-use."
          (type (tickscript--deftask-get-series-type))
          (dbrp (tickscript--deftask-get-series-dbrp))
          (filename (file-name-nondirectory (buffer-file-name)))
-         (cmd (format "kapacitor define %s -type %s -tick %s -dbrp %s" name type filename dbrp)))
+         (cmd (format "%s define %s -type %s -tick %s -dbrp %s"
+                      tickscript-kapacitor-prog-name name type filename dbrp)))
     (with-temp-buffer (compilation-start cmd 'compilation-mode))))
 
+
+(defun tickscript-show-task ()
+  "Use Kapacitor to show the definition of the current task."
+  (interactive)
+  (let* ((name (tickscript--deftask-get-series-name))
+         (task (shell-command-to-string (format "%s show %s"
+                                                tickscript-kapacitor-prog-name name))))
+    (with-output-to-temp-buffer "*tickscript-task*"
+      (switch-to-buffer-other-window "*tickscript-task*")
+      (set (make-local-variable 'font-lock-defaults) '(tickscript-font-lock-keywords))
+      (font-lock-mode)
+      (insert task))))
 
 ;;;###autoload
 (define-derived-mode tickscript-mode prog-mode "Tickscript"
