@@ -101,10 +101,10 @@
 
 
 (setq tickscript-properties
-      '("align" "alignGroup" "buffer" "byMeasurement" "cluster" "create" "cron"
-        "database" "every" "fill" "flushInterval" "groupBy" "groupByMeasurement"
-        "measurement" "offset" "period" "precision" "retentionPolicy" "tag"
-        "writeConsistency"))
+      '("align" "alignGroup" "as" "buffer" "byMeasurement" "cluster" "create"
+        "cron" "database" "every" "fill" "flushInterval" "groupBy"
+        "groupByMeasurement" "keep" "measurement" "offset" "period" "precision"
+        "quiet" "retentionPolicy" "tag" "tags" "writeConsistency"))
 
 (setq tickscript-toplevel-nodes
       '("batch" "stream"))
@@ -128,7 +128,7 @@
         ;; Nodes
         (,(concat "\\_<" (regexp-opt tickscript-nodes t) "\\_>") . 'tickscript-node)
         ;; Time units
-        (,(rx symbol-start (1+ digit) (or "u" "µ" "ms" "s" "m" "h" "d" "w") symbol-end) . 'tickscript-time)
+        (,(rx symbol-start (* "-") (1+ digit) (or "u" "µ" "ms" "s" "m" "h" "d" "w") symbol-end) . 'tickscript-time)
         ;; Operators
         (,(rx (or "/" "\|")) . 'tickscript-operator)
         ;; Variable declarations
@@ -152,6 +152,9 @@
   (let ((map (make-sparse-keymap)))
     ;; Indentation
     (define-key map (kbd "<backtab>") 'tickscript-indent-dedent-line)
+    ;; Movement
+    (define-key map (kbd "<M-down>") 'tickscript-move-line-or-region-down)
+    (define-key map (kbd "<M-up>") 'tickscript-move-line-or-region-up)
     ;; Util
     (define-key map "\C-c\C-c" 'tickscript-check)
     map)
@@ -306,6 +309,58 @@ current indentation context."
     (when (>= point-offset 0)
       (move-to-column (+ (current-indentation) point-offset)))))
 
+(defun tickscript-move-line-or-region-down (&optional beg end)
+  "Move the current line or active region down."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end))
+     (list nil nil)))
+  (if beg
+      (tickscript--move-region-vertically beg end 1)
+    (tickscript--move-line-vertically 1)))
+
+(defun tickscript-move-line-or-region-up (&optional beg end)
+  "Move the current line or active region down."
+  (interactive
+   (if (use-region-p)
+       (list (region-beginning) (region-end))
+     (list nil nil)))
+  (if beg
+      (tickscript--move-region-vertically beg end -1)
+    (tickscript--move-line-vertically -1)))
+
+(defun tickscript--move-line-vertically (dir)
+  (let* ((beg (point-at-bol))
+         (end (point-at-bol 2))
+         (col (current-column))
+         (region (delete-and-extract-region beg end)))
+    (forward-line dir)
+    (save-excursion
+      (insert region))
+    (goto-char (+ (point) col))))
+
+(defun tickscript--move-region-vertically (beg end dir)
+  (let* ((point-before-mark (< (point) (mark)))
+         (beg (save-excursion
+                (goto-char beg)
+                (point-at-bol)))
+         (end (save-excursion
+                (goto-char end)
+                (if (bolp)
+                    (point)
+                  (point-at-bol 2))))
+         (region (delete-and-extract-region beg end)))
+    (goto-char beg)
+    (forward-line dir)
+    (save-excursion
+      (insert region))
+    (if point-before-mark
+        (set-mark (+ (point)
+                     (length region)))
+      (set-mark (point))
+      (goto-char (+ (point)
+                    (length region))))
+    (setq deactivate-mark nil)))
 
 ;;;###autoload
 (define-derived-mode tickscript-mode prog-mode "Tickscript"
