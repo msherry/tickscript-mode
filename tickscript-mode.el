@@ -42,6 +42,7 @@
 (defvar tickscript-toplevel-nodes nil)
 (defvar tickscript-nodes nil)
 (defvar tickscript-chaining-methods nil)
+(defvar tickscript-define-cmd nil)
 
 (defgroup tickscript nil
   "TICKscript support for Emacs."
@@ -361,6 +362,18 @@ current indentation context."
       (goto-char (+ (point)
                     (length region))))
     (setq deactivate-mark nil)))
+
+
+(defun tickscript-define-task ()
+  "Use Kapacitor to define the current task.
+NOTE: currently depends on the define command being set in the
+buffer-local variable `tickscript-define-cmd'."
+  (interactive)
+  (save-buffer)
+  (let ((tickscript-dir default-directory)
+        (cmd tickscript-define-cmd))
+    (with-temp-buffer (compilation-start cmd 'compilation-mode))))
+
 
 ;;;###autoload
 (define-derived-mode tickscript-mode prog-mode "Tickscript"
