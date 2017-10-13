@@ -121,7 +121,7 @@
 (setq tickscript-nodes
       '("alert" "batch" "bottom" "combine" "count" "cumulativeSum" "deadman"
         "default" "delete" "derivative" "difference" "distinct" "elapsed"
-        "eval" "exclude" "first" "flatten" "groupBy" "holtWinters"
+        "eval" "exclude" "first" "flatten" "from" "groupBy" "holtWinters"
         "holtWintersWithFit" "httpOut" "httpPost" "influxDBOut" "join"
         "kapacitorLoopback" "last" "log" "max" "mean" "median" "min" "mode"
         "movingAverage" "percentile" "query" "sample" "shift" "spread"
@@ -419,13 +419,15 @@ calls Kapacitor to define it.  This information is cached in the
 file comments for later re-use."
   (interactive)
   (save-buffer)
+  (hack-local-variables)
   (let* ((name (tickscript--deftask-get-series-name))
          (type (tickscript--deftask-get-series-type))
          (dbrp (tickscript--deftask-get-series-dbrp))
          (filename (file-name-nondirectory (buffer-file-name)))
          (cmd (format "%s define %s -type %s -tick %s -dbrp %s"
-                      tickscript-kapacitor-prog-name name type filename dbrp)))
-    (with-temp-buffer (compilation-start cmd 'compilation-mode))))
+                      tickscript-kapacitor-prog-name name type filename dbrp))
+         (results (shell-command-to-string (format "echo -n \"%s - \" ; RESULT=`%s 2>&1`&& echo -n SUCCESS || echo FAILURE && echo -n $RESULT" cmd cmd))))
+    (message results)))
 
 
 (defun tickscript-show-task ()
