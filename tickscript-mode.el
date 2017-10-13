@@ -157,16 +157,25 @@
     (modify-syntax-entry ?\n ">" table)
     table))
 
+(defvar tickscript-list-commands-map
+  (let ((map (define-prefix-command 'tickscript-list-commands-map)))
+    (define-key map (kbd "t") #'tickscript-list-tasks)
+    (define-key map (kbd "r") #'tickscript-list-recordings)
+    (define-key map (kbd "p") #'tickscript-list-replays))
+  map)
+
 (defvar tickscript-mode-map
   (let ((map (make-sparse-keymap)))
     ;; Indentation
-    (define-key map (kbd "<backtab>") 'tickscript-indent-dedent-line)
+    (define-key map (kbd "<backtab>") #'tickscript-indent-dedent-line)
     ;; Movement
-    (define-key map (kbd "<M-down>") 'tickscript-move-line-or-region-down)
-    (define-key map (kbd "<M-up>") 'tickscript-move-line-or-region-up)
+    (define-key map (kbd "<M-down>") #'tickscript-move-line-or-region-down)
+    (define-key map (kbd "<M-up>") #'tickscript-move-line-or-region-up)
     ;; Util
-    (define-key map (kbd "C-c C-c") 'tickscript-define-task)
-    (define-key map (kbd "C-c C-v") 'tickscript-show-task)
+    (define-key map (kbd "C-c C-c") #'tickscript-define-task)
+    (define-key map (kbd "C-c C-v") #'tickscript-show-task)
+    ;; Listing
+    (define-key map (kbd "C-c C-l") #'tickscript-list-commands-map)
     map)
   "Keymap for `tickscript-mode'.")
 
@@ -430,6 +439,32 @@ file comments for later re-use."
       (set (make-local-variable 'font-lock-defaults) '(tickscript-font-lock-keywords))
       (font-lock-mode)
       (insert task))))
+
+
+(defun tickscript--list-things (noun)
+  (let ((things
+         (shell-command-to-string (format "%s list %s" tickscript-kapacitor-prog-name noun)))
+        (buffer-name (format "*tickscript-%s*" noun)))
+    (with-output-to-temp-buffer buffer-name
+      (switch-to-buffer-other-window buffer-name)
+      (set (make-local-variable 'font-lock-defaults) '(tickscript-font-lock-keywords))
+      (font-lock-mode)
+      (insert things))))
+
+(defun tickscript-list-tasks ()
+  "Use Kapacitor to list all defined tasks."
+  (interactive)
+  (tickscript--list-things "tasks"))
+
+(defun tickscript-list-recordings ()
+  "Use Kapacitor to list all recordings."
+  (interactive)
+  (tickscript--list-things "recordings"))
+
+(defun tickscript-list-replays ()
+  "Use Kapacitor to list all replays."
+  (interactive)
+  (tickscript--list-things "replays"))
 
 ;;;###autoload
 (define-derived-mode tickscript-mode prog-mode "Tickscript"
