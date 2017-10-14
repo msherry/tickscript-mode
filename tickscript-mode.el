@@ -1,11 +1,11 @@
-;;; tickscript-mode.el --- A major mode for Tickscript files
+;;; tickscript-mode.el --- A major mode for Tickscript files  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2017  Marc Sherry
 ;; Homepage: https://github.com/msherry/tickscript-mode
 ;; Version: 0.1
 ;; Author: Marc Sherry <msherry@gmail.com>
 ;; Keywords: languages
-;; Package-Requires: ((emacs "24"))
+;; Package-Requires: ((emacs "24.1"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -212,7 +212,7 @@ If unset, defaults to \"http://localhost:9092\"."
     (define-key map (kbd "C-c C-c") #'tickscript-define-task)
     (define-key map (kbd "C-c C-v") #'tickscript-show-task)
     ;; Listing
-    (define-key map (kbd "C-c C-l") #'tickscript-list-commands-map)
+    (define-key map (kbd "C-c C-l") 'tickscript-list-commands-map)
     map)
   "Keymap for `tickscript-mode'.")
 
@@ -231,8 +231,8 @@ KW-LIST is a list of strings."
   (save-excursion
     (and (member (current-word t) kw-list)
          (not (looking-at "("))
-         (not (or (tickscript-in-comment)
-                  (tickscript-in-string))))))
+         (not (or (tickscript--in-comment)
+                  (tickscript--in-string))))))
 
 (defun tickscript-at-node (&optional toplevel-only)
   "Return the word at point if it is a node.
@@ -292,11 +292,11 @@ Do not move back beyond MIN."
         (goto-char pos)
         (+ tickscript-indent-offset (current-indentation))))))
 
-(defun tickscript-in-string ()
+(defun tickscript--in-string ()
   "Return non-nil if point is inside a string."
   (nth 3 (syntax-ppss)))
 
-(defun tickscript-in-comment ()
+(defun tickscript--in-comment ()
   "Return non-nil if point is inside a comment."
   (nth 4 (syntax-ppss)))
 
@@ -306,7 +306,7 @@ meaning always increase indent on TAB and decrease on S-TAB."
   ;; Taken from julia-mode.el
   (save-excursion
     (beginning-of-line)
-    (when (tickscript-in-string)
+    (when (tickscript--in-string)
       (if (member this-command tickscript-indent-trigger-commands)
           (+ tickscript-indent-offset (current-indentation))
         ;; return the current indentation to prevent other functions from
@@ -341,7 +341,7 @@ current indentation context."
       ;; Top-level node w/optional var declaration
       (tickscript-indent-toplevel-node)
       ;; General case
-      (progn          ;save-excursion
+      (save-excursion
         (beginning-of-line)
         ;; jump up out of any comments
         (let ((state (syntax-ppss)))
@@ -492,8 +492,11 @@ file comments for later re-use."
          (shell-command-to-string (format "%s list %s" tickscript-kapacitor-prog-name noun)))
         (buffer-name (format "*tickscript-%s*" noun)))
     (with-output-to-temp-buffer buffer-name
-      (switch-to-buffer-other-window buffer-name)
+      (unless (equal (buffer-name) buffer-name)
+        (switch-to-buffer-other-window buffer-name))
       (set (make-local-variable 'font-lock-defaults) '(tickscript-font-lock-keywords))
+      (set (make-local-variable 'revert-buffer-function)
+           (lambda (_ignore-auto _noconfirm) (tickscript--list-things noun)))
       (font-lock-mode)
       (insert things))))
 
