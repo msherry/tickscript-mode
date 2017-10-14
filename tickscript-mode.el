@@ -106,14 +106,6 @@ If unset, defaults to \"http://localhost:9092\"."
   :type '(repeat symbol)
   :group 'tickscript)
 
-(defcustom tickscript-max-block-lookback 5000
-  "When indenting, don't look back more than this many characters."
-
-  ;; TODO: This should be eliminated, I'm just copying from julia-mode for now.
-  :type 'integer
-  :group 'tickscript
-  :safe 'integerp)
-
 (defface tickscript-property
   '((t :inherit font-lock-keyword-face))
   "Face for properties in TICKscript, like align, groupBy, period, etc."
@@ -132,10 +124,16 @@ If unset, defaults to \"http://localhost:9092\"."
   :tag "tickscript-variable"
   :group 'tickscript)
 
-(defface tickscript-time
+(defface tickscript-number
+  '((t :inherit font-lock-constant-face))
+  "Face for numbers in TICKscript."
+  :tag "tickscript-number"
+  :group 'tickscript)
+
+(defface tickscript-duration
   '((t :inherit font-lock-constant-face))
   "Face for time ranges in TICKscript, like 1h, 20us, etc.."
-  :tag "tickscript-time"
+  :tag "tickscript-duration"
   :group 'tickscript)
 
 (defface tickscript-operator
@@ -148,7 +146,7 @@ If unset, defaults to \"http://localhost:9092\"."
 
 (setq tickscript-properties
       '("align" "alignGroup" "as" "buffer" "byMeasurement" "cluster" "create"
-        "cron" "database" "every" "fill" "flushInterval" "groupBy"
+        "crit" "cron" "database" "every" "field" "fill" "flushInterval" "groupBy"
         "groupByMeasurement" "keep" "measurement" "offset" "period" "precision"
         "quiet" "retentionPolicy" "tag" "tags" "writeConsistency"))
 
@@ -174,11 +172,13 @@ If unset, defaults to \"http://localhost:9092\"."
         ;; Nodes
         (,(concat "\\_<" (regexp-opt tickscript-nodes t) "\\_>") . 'tickscript-node)
         ;; Time units
-        (,(rx symbol-start (* "-") (1+ digit) (or "u" "µ" "ms" "s" "m" "h" "d" "w") symbol-end) . 'tickscript-time)
-        ;; Operators
-        (,(rx (or "/" "\|")) . 'tickscript-operator)
+        (,(rx symbol-start (? "-") (1+ digit) (or "u" "µ" "ms" "s" "m" "h" "d" "w") symbol-end) . 'tickscript-duration)
+        (,(rx symbol-start (? "-") (1+ digit) (optional "\." (1+ digit))) . 'tickscript-number)
         ;; Variable declarations
-        ("\\_<\\(?:var\\)\\_>[[:space:]]+\\([[:alpha:]]\\(?:[[:alnum:]]\\|_\\)*\\)" (1 'tickscript-variable nil nil))))
+        ("\\_<\\(?:var\\)\\_>[[:space:]]+\\([[:alpha:]]\\(?:[[:alnum:]]\\|_\\)*\\)" (1 'tickscript-variable nil nil))
+        ;; Operators
+        (,(rx (or "\|" "\+" "\-" "\*" "/")) . 'tickscript-operator)
+        ))
 
 (defconst tickscript-mode-syntax-table
   (let ((table (make-syntax-table)))
@@ -222,7 +222,7 @@ If unset, defaults to \"http://localhost:9092\"."
   (if (condition-case nil (backward-sexp) (error t))
       (ignore-errors (backward-char))))
 
-(defun tickscript-at-keyword (kw-list)
+(defun tickscript--at-keyword (kw-list)
   "Return the word at point if it matches any keyword in KW-LIST.
 
 KW-LIST is a list of strings."
@@ -249,7 +249,7 @@ only toplevel nodes \"batch\" and \"stream\" are checked."
     (and (or (= (point) 1)
              (equal (char-before (point)) ?|)
              (not (equal (char-before (point)) ?.)))
-         (tickscript-at-keyword (if toplevel-only
+         (tickscript--at-keyword (if toplevel-only
                                     tickscript-toplevel-nodes
                                   tickscript-nodes)))))
 
@@ -258,9 +258,27 @@ only toplevel nodes \"batch\" and \"stream\" are checked."
 
 To be a property, it must be a keyword in the properties list, and
 be preceded by the \".\" sigil."
-  (and (> (point) 1)
-       (equal (char-before (point)) ?.)
-       (tickscript-at-keyword tickscript-properties)))
+  (save-excursion
+    (when (looking-at ".")
+      (forward-char))
+    (and (> (point) 1)
+         (equal (char-before (point)) ?.)
+         (tickscript--at-keyword tickscript-properties))))
+
+(defun tickscript--in-string ()
+  "Return non-nil if point is inside a string."
+  (nth 3 (syntax-ppss)))
+
+(defun tickscript--in-comment ()
+  "Return non-nil if point is inside a comment."
+  (nth 4 (syntax-ppss)))
+
+(defun tickscript-at-node-instance ()
+  "Return whether word at point is an instance of a previously-defined node."
+  (not (or (tickscript-at-node)
+           (tickscript-at-property)
+           (tickscript--in-string)
+           (tickscript--in-comment))))
 
 (defun tickscript-last-node-pos (&optional min)
   "Return the position of the last node, if found.
@@ -279,7 +297,7 @@ Do not move back beyond position MIN."
           (point)
         nil))))
 
-(defun tickscript-node-indentation (&optional min)
+(defun tickscript--node-indentation (&optional min)
   "Return indentation level for items under the last node.
 Do not move back beyond MIN."
   ;; Ensure MIN is not before start of buffer
@@ -292,13 +310,16 @@ Do not move back beyond MIN."
         (goto-char pos)
         (+ tickscript-indent-offset (current-indentation))))))
 
-(defun tickscript--in-string ()
-  "Return non-nil if point is inside a string."
-  (nth 3 (syntax-ppss)))
-
-(defun tickscript--in-comment ()
-  "Return non-nil if point is inside a comment."
-  (nth 4 (syntax-ppss)))
+(defmacro tickscript--at-bol (&rest body)
+  `(progn
+     (save-excursion
+       (beginning-of-line)
+       ;; jump up out of any comments
+       (let ((state (syntax-ppss)))
+         (when (nth 4 state)
+           (goto-char (nth 8 state))))
+       (forward-to-indentation 0)
+       ,(macroexp-progn body))))
 
 (defun tickscript-indent-in-string ()
   "Indentation inside strings with newlines is \"manual\",
@@ -307,22 +328,57 @@ meaning always increase indent on TAB and decrease on S-TAB."
   (save-excursion
     (beginning-of-line)
     (when (tickscript--in-string)
+      ;; (message "STRING")
       (if (member this-command tickscript-indent-trigger-commands)
           (+ tickscript-indent-offset (current-indentation))
         ;; return the current indentation to prevent other functions from
         ;; indenting inside strings
         (current-indentation)))))
 
+(defun tickscript-indent-comment-line ()
+  "Indentation for comment lines."
+  (save-excursion
+    (beginning-of-line)
+    (forward-to-indentation 0)
+    (when (looking-at "//")
+      ;; (message "COMMENT LINE")
+      ;; Match previous line's indentation if non-empty (not just whitespace),
+      ;; otherwise 0 indentation
+      (if (eq (line-number-at-pos) 1)
+          0
+        (forward-line -1)
+        (current-indentation)))))
+
 (defun tickscript-indent-toplevel-node ()
   "Indentation for toplevel nodes, which are always at level 0.
 
  \"batch\" or \"stream\", with optional \"var\" declarations."
-  (save-excursion
-    (beginning-of-line)
-    (forward-to-indentation 0)
-    (and (or (looking-at "var")
+  (tickscript--at-bol
+   (when (or (looking-at "var")
              (tickscript-at-node t))
-         0)))
+     ;; (message "TOPLEVEL")
+     0)))
+
+(defun tickscript-indent-non-toplevel-node ()
+  "Indentation for non-toplevel nodes."
+  (tickscript--at-bol
+   (when (tickscript-at-node)
+     ;; (message "NODE")
+     tickscript-indent-offset)))
+
+(defun tickscript-indent-property ()
+  "Indentation for property members."
+  (tickscript--at-bol
+   (when (tickscript-at-property)
+     ;; (message "PROP")
+     (* 2 tickscript-indent-offset))))
+
+(defun tickscript-indent-node-instance ()
+  "Indentation for previously-defined nodes."
+  (tickscript--at-bol
+   (when (tickscript-at-node-instance)
+     ;; (message "INSTANCE")
+     0)))
 
 (defun tickscript-indent-dedent-line ()
   "Deindent by `tickscript-indent-offset' spaces regardless of
@@ -338,28 +394,19 @@ current indentation context."
      (or
       ;; Within a string
       (tickscript-indent-in-string)
+      ;; Comment lines
+      (tickscript-indent-comment-line)
       ;; Top-level node w/optional var declaration
       (tickscript-indent-toplevel-node)
-      ;; General case
-      (save-excursion
-        (beginning-of-line)
-        ;; jump up out of any comments
-        (let ((state (syntax-ppss)))
-          (when (nth 4 state)
-            (goto-char (nth 8 state))))
-        (forward-to-indentation 0)
-        (let ((proptok (tickscript-at-property))
-              (nodetok (tickscript-at-node))
-              (node-indent (tickscript-node-indentation
-                            (- (point) tickscript-max-block-lookback))))
-          (max 0 (+ (or node-indent 0)
-                    (cond (proptok tickscript-indent-offset)
-                          ;; Only dedent this as a node if we're on a node and the previous
-                          ;; node is not a toplevel
-                          ((and nodetok
-                                (> node-indent tickscript-indent-offset))
-                           (- tickscript-indent-offset))
-                          (t 0))))))))
+      ;; A child node
+      (tickscript-indent-non-toplevel-node)
+      ;; A property
+      (tickscript-indent-property)
+      ;; Previously-defined node
+      (tickscript-indent-node-instance)
+      ;;(error "Couldn't find a way to indent this line")
+      0
+      ))
     ;; We've indented and point is now at the beginning of indentation. Restore
     ;; it to its original position relative to the start of indentation.
     (when (>= point-offset 0)
