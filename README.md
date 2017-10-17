@@ -45,3 +45,9 @@ directly with Kapacitor:
 * <kbd>C-c C-l t</kbd> -- `tickscript-list-tasks`
 
   Query Kapacitor for information about the specified objects.
+
+Support is also provided for looking up node and property definitions:
+
+* <kbd>C-c C-d</kbd> -- `tickscript-get-help`
+
+  Look up the node, and possibly property, currently under point online.

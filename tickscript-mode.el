@@ -126,6 +126,12 @@ If unset, defaults to \"http://localhost:9092\"."
   :tag "tickscript-node"
   :group 'tickscript)
 
+(defface tickscript-chaining-method
+  '((t :inherit font-lock-type-face))
+  "Face for chaining methods in TICKscript, like median, mean, etc."
+  :tag "tickscript-chaining-method"
+  :group 'tickscript)
+
 (defface tickscript-variable
   '((t :inherit font-lock-variable-name-face))
   "Face for variables in TICKscript."
@@ -156,20 +162,21 @@ If unset, defaults to \"http://localhost:9092\"."
       '("align" "alignGroup" "as" "buffer" "byMeasurement" "cluster" "create"
         "crit" "cron" "database" "every" "field" "fill" "flushInterval" "groupBy"
         "groupByMeasurement" "keep" "level" "measurement" "offset" "period" "precision"
-        "quiet" "retentionPolicy" "tag" "tags" "writeConsistency"))
+        "quiet" "retentionPolicy" "tag" "tags" "usePointTimes" "writeConsistency"))
 
 (setq tickscript-toplevel-nodes
       '("batch" "stream"))
 
 (setq tickscript-nodes
-      '("alert" "batch" "bottom" "combine" "count" "cumulativeSum" "deadman"
-        "default" "delete" "derivative" "difference" "distinct" "elapsed"
-        "eval" "exclude" "first" "flatten" "from" "groupBy" "holtWinters"
-        "holtWintersWithFit" "httpOut" "httpPost" "influxDBOut" "join"
-        "kapacitorLoopback" "last" "log" "max" "mean" "median" "min" "mode"
-        "movingAverage" "percentile" "query" "sample" "shift" "spread"
-        "stateCount" "stateDuration" "stats" "stddev" "stream" "sum" "top"
-        "union" "where" "window"))
+      '("alert" "batch" "combine" "deadman" "default" "delete" "derivative"
+        "eval" "exclude" "flatten" "from" "groupBy" "httpOut" "httpPost"
+        "influxDBOut" "join" "kapacitorLoopback" "log" "query" "sample" "shift"
+        "stateCount" "stateDuration" "stats" "stream" "union" "where" "window"))
+
+(setq tickscript-chaining-methods
+      '("bottom" "count" "cumulativeSum" "difference" "distinct" "elapsed"
+        "first" "holtWinters" "holtWintersWithFit" "last" "max" "mean" "median"
+        "min" "mode" "movingAverage" "percentile" "spread" "stddev" "sum" "top"))
 
 (puthash "httpOut" "http_out" tickscript-webhelp-case-map)
 (puthash "httpPost" "http_post" tickscript-webhelp-case-map)
@@ -181,6 +188,8 @@ If unset, defaults to \"http://localhost:9092\"."
         (rx symbol-start (or "var") symbol-end)
         ;; Node properties
         (,(concat "\\_<" (regexp-opt tickscript-properties t) "\\_>") . 'tickscript-property)
+        ;; Chaining methods - like nodes, but not
+        (,(concat "\\_<" (regexp-opt tickscript-chaining-methods t) "\\_>") . 'tickscript-chaining-method)
         ;; Nodes
         (,(concat "\\_<" (regexp-opt tickscript-nodes t) "\\_>") . 'tickscript-node)
         ;; Time units
@@ -272,6 +281,25 @@ only toplevel nodes \"batch\" and \"stream\" are checked."
                                        tickscript-toplevel-nodes
                                      tickscript-nodes))))))
 
+(defun tickscript-at-chaining-method ()
+  "Return the word at point if it is a chaining method.
+
+Chaining methods act much like nodes, but are only available
+under certain nodes.  See `tickscript-at-node' for details on how
+this function works."
+    ;; Skip over any sigil, if present
+  (save-excursion
+    (when (looking-at "|")
+      (forward-char))
+    (let* ((word-bounds (bounds-of-thing-at-point 'word))
+           (word-start (and word-bounds
+                            (car word-bounds))))
+      (and word-start
+       (or (= word-start 1)
+               (equal (char-before word-start) ?|)
+               (not (equal (char-before word-start) ?.)))
+           (tickscript--at-keyword tickscript-chaining-methods)))))
+
 (defun tickscript-at-property ()
   "Return the word at point if it is a property.
 
@@ -320,9 +348,27 @@ Do not move back beyond position MIN."
           (point)
         nil))))
 
+(defun tickscript-last-chaining-method-pos (&optional min)
+  "Return the position of the last chaining method, if found.
+Do not move back beyond the current node, or position MIN."
+  (unless min
+    (setq min 0))
+  (save-excursion
+    (let ((count 0)
+          (node-count 0))
+      (while (not (or (> count 0) (> node-count 0) (<= (point) min)))
+        (tickscript-safe-backward-sexp)
+        (if (tickscript-at-chaining-method)
+            (setq count (1+ count)))
+        (if (tickscript-at-node)
+            (setq node-count (1+ node-count))))
+      (if (> count 0)
+          (point)
+        nil))))
+
 (defun tickscript-last-property-pos (&optional min)
   "Return the position of the last property, if found.
-Do not move back beyond position MIN."
+Do not move back beyond the current node, or position MIN."
   (unless min
     (setq min 0))
   (save-excursion
@@ -343,6 +389,13 @@ Do not move back beyond position MIN."
   (save-excursion
     (goto-char (tickscript-last-node-pos))
     (tickscript--at-keyword tickscript-nodes)))
+
+(defun tickscript-current-chaining-method ()
+  "Return the name of the current chaining method, if any."
+  (when (tickscript-last-chaining-method-pos)
+    (save-excursion
+      (goto-char (tickscript-last-chaining-method-pos))
+      (tickscript--at-keyword tickscript-chaining-methods))))
 
 (defun tickscript-current-property ()
   "Return the name of the current property -- under point, or the currently-open property."
@@ -421,7 +474,8 @@ meaning always increase indent on TAB and decrease on S-TAB."
 (defun tickscript-indent-non-toplevel-node ()
   "Indentation for non-toplevel nodes."
   (tickscript--at-bol
-   (when (tickscript-at-node)
+   (when (or (tickscript-at-node)
+             (tickscript-at-chaining-method))
      ;; (message "NODE")
      tickscript-indent-offset)))
 
@@ -459,7 +513,7 @@ current indentation context."
       (tickscript-indent-comment-line)
       ;; Top-level node w/optional var declaration
       (tickscript-indent-toplevel-node)
-      ;; A child node
+      ;; A child node or chaining method
       (tickscript-indent-non-toplevel-node)
       ;; A property
       (tickscript-indent-property)
@@ -631,11 +685,12 @@ file comments for later re-use."
   "Gets help for the node or property at point, if any."
   (interactive)
   (let* ((node (tickscript-current-node))
-         (property (tickscript-current-property))
+         (chaining-method-or-property (or (tickscript-current-chaining-method)
+                                          (tickscript-current-property)))
          (url (format "https://docs.influxdata.com/kapacitor/v1.3/nodes/%s_node/"
                       (tickscript--downcase-for-webhelp node))))
-    (when property
-      (setq url (format "%s#%s" url (tickscript--downcase-for-webhelp property))))
+    (when chaining-method-or-property
+      (setq url (format "%s#%s" url (tickscript--downcase-for-webhelp chaining-method-or-property))))
     (browse-url url)))
 
 ;;;###autoload
