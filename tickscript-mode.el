@@ -5,7 +5,7 @@
 ;; Version: 0.1
 ;; Author: Marc Sherry <msherry@gmail.com>
 ;; Keywords: languages
-;; Package-Requires: ((emacs "24.1"))
+;; Package-Requires: ((emacs "24.1") s)
 
 ;; This file is not part of GNU Emacs.
 
@@ -71,6 +71,8 @@
 ;;   Look up the node, and possibly property, currently under point online.
 
 ;;; Code:
+
+(require 's)
 
 (defvar tickscript-font-lock-keywords nil)
 (defvar tickscript-properties nil)
@@ -646,6 +648,26 @@ file comments for later re-use."
     (message results)))
 
 
+(defun tickscript-render-task-dot-to-buffer ()
+  "Extract the DOT graph from the current buffer, render it with Graphviz, and insert the image."
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (re-search-forward "^DOT:$")
+    (forward-line 1)
+    (let* ((beg (point))
+           (end (point-max))
+           (region (buffer-substring-no-properties beg end))
+           (escaped (s-replace "]" "\"]" (s-replace "[" "[\"" (s-replace "\"" "\\\"" region))))
+           (tmpfile (format "/%s/%s.png" temporary-file-directory (make-temp-name "tickscript-")))
+           (cmd (format "echo \"%s\" | dot -T png -o %s" escaped tmpfile)))
+      (shell-command cmd)
+      (goto-char (point-max))
+      (insert-char ?\n)
+      (let ((inhibit-read-only t))
+        (insert-image (create-image tmpfile))))))
+
+
 (defun tickscript-show-task ()
   "Use Kapacitor to show the definition of the current task."
   (interactive)
@@ -655,9 +677,11 @@ file comments for later re-use."
          (buffer-name "*tickscript-task*"))
     (with-output-to-temp-buffer buffer-name
       (switch-to-buffer-other-window buffer-name)
+      (erase-buffer)
       (set (make-local-variable 'font-lock-defaults) '(tickscript-font-lock-keywords))
       (font-lock-mode)
-      (insert task))))
+      (insert task)
+      (tickscript-render-task-dot-to-buffer))))
 
 
 (defun tickscript--list-things (noun)
