@@ -88,7 +88,7 @@ batch
         .cluster('local')
 "))
 
-(ert-deftest tickscript--test-indent-var-dec ()
+(ert-deftest tickscript--test-indent-var-declaration ()
   "Var declarations should be indented to 0."
 
   (tickscript--should-indent
@@ -99,6 +99,21 @@ var day_median = day_batched
 "
    "
 var day_median = day_batched
+    |median('duration')
+        .as('day_median')
+"))
+
+(ert-deftest tickscript--test-indent-node-instance ()
+  "Previously-defined nodes should be indented to 0."
+
+  (tickscript--should-indent
+   "
+day_batched
+|median('duration')
+.as('day_median')
+"
+   "
+day_batched
     |median('duration')
         .as('day_median')
 "))

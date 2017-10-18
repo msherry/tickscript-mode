@@ -39,7 +39,9 @@ directly with Kapacitor:
 
 * <kbd>C-c C-v</kbd> -- `tickscript-show-task`
 
-  View the current task's definition with `kapacitor show <task>`
+  View the current task's definition with `kapacitor show <task>`. This will
+  also render the DOT output inline, for easier visualization of the nodes
+  involved.
 
 * <kbd>C-c C-l p</kbd> -- `tickscript-list-replays`
 * <kbd>C-c C-l r</kbd> -- `tickscript-list-recordings`
