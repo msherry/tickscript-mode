@@ -490,7 +490,7 @@ be part of user-defined functions."
    (when (or (tickscript-property-at-point)
              ;; for now, anything starting with "." is a property, because of
              ;; UDFs. TODO: tighten this up to only work under real UDFs?
-             (looking-at "\."))
+             (looking-at "\\."))
      ;; (message "PROP")
      (* 2 tickscript-indent-offset))))
 
