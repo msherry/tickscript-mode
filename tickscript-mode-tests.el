@@ -118,6 +118,21 @@ day_batched
         .as('day_median')
 "))
 
+(ert-deftest tickscript--test-indent-udf ()
+  "User-defined functions should be indented similarly to chaining functions."
+
+  (tickscript--should-indent
+   "
+var my_custom = other_thing
+@my_udf('duration')
+.as('day_udf')
+"
+   "
+var my_custom = other_thing
+    @my_udf('duration')
+        .as('day_udf')
+"))
+
 (ert-deftest tickscript--test-font-locking ()
   "Test that font locking is applied correctly."
   (tickscript--should-font-lock
