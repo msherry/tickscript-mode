@@ -1,5 +1,6 @@
 [![MELPA](https://melpa.org/packages/tickscript-mode-badge.svg)](https://melpa.org/#/tickscript-mode)
 [![MELPA Stable](https://stable.melpa.org/packages/tickscript-mode-badge.svg)](https://stable.melpa.org/#/tickscript-mode)
+[![Build Status](https://travis-ci.org/msherry/tickscript-mode.svg?branch=master)](https://travis-ci.org/msherry/tickscript-mode)
 
 # tickscript-mode
 A major mode for Tickscript files
