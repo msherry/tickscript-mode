@@ -674,8 +674,12 @@ file comments for later re-use."
       (shell-command cmd)
       (goto-char (point-max))
       (insert-char ?\n)
-      (let ((inhibit-read-only t))
-        (insert-image (create-image tmpfile))))))
+      (let ((inhibit-read-only t)
+            (image (if (image-type-available-p 'imagemagick)
+                       (create-image tmpfile 'imagemagick nil
+                                     :max-width (truncate (* .9 (window-pixel-width))))
+                     (create-image tmpfile))))
+        (insert-image image)))))
 
 
 (defun tickscript-show-task ()
