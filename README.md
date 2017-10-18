@@ -11,7 +11,7 @@ Provides Emacs font-lock, indentation, navigation, and utility functions for
 working with [TICKscript](https://docs.influxdata.com/kapacitor/v1.3/tick/), a
 DSL for use with Kapacitor and InfluxDB.
 
-![tickscript-mode](images/tickscript-mode-2.png "tickscript-mode")
+![tickscript-mode](images/tickscript-mode.png "tickscript-mode")
 
 ## Installation
 
