@@ -133,6 +133,35 @@ var my_custom = other_thing
         .as('day_udf')
 "))
 
+(ert-deftest tickscript--test-indent-comments ()
+  "Comments should be indented at the level of the line above
+them, unless there is a blank line above, in which case they
+should be indented to zero."
+
+  (tickscript--should-indent
+   "
+// This is a definition
+batch
+|query(SQL)
+.groupBy(*)
+// .period(1h)    // commented out
+.window(1d)
+// .fill('null')
+
+// A new comment
+"
+   "
+// This is a definition
+batch
+    |query(SQL)
+        .groupBy(*)
+        // .period(1h)    // commented out
+        .window(1d)
+        // .fill('null')
+
+// A new comment
+"))
+
 (ert-deftest tickscript--test-font-locking ()
   "Test that font locking is applied correctly."
   (tickscript--should-font-lock
