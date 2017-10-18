@@ -110,6 +110,12 @@ If unset, defaults to \"http://localhost:9092\"."
   :group 'tickscript
   :safe 'stringp)
 
+(defcustom tickscript-render-dot-output t
+  "Whether to render DOT output with Graphviz when executing tickscript-show-task."
+  :type 'boolean
+  :group 'tickscript
+  :safe 'booleanp)
+
 (defcustom tickscript-indent-trigger-commands
   '(indent-for-tab-command yas-expand yas/expand)
   "Commands that might trigger a `tickscript-indent-line' call."
@@ -685,7 +691,8 @@ file comments for later re-use."
       (set (make-local-variable 'font-lock-defaults) '(tickscript-font-lock-keywords))
       (font-lock-mode)
       (insert task)
-      (tickscript-render-task-dot-to-buffer))))
+      (when tickscript-render-dot-output
+        (tickscript-render-task-dot-to-buffer)))))
 
 
 (defun tickscript--list-things (noun)
