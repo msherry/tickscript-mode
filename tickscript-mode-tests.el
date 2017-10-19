@@ -64,6 +64,13 @@
              (face (cdr pair)))
          (should (eq face (get-text-property pos 'face)))))))
 
+(defmacro tickscript--should-cleanup-dot (from to)
+  "Assert that we clean up the dot FROM into TO."
+  `(with-temp-buffer
+     (insert ,from)
+     (let ((cleaned (tickscript--cleanup-dot (tickscript--extract-dot-from-buffer))))
+       (should (equal cleaned ,to)))))
+
 (ert-deftest tickscript--test-indent-properties ()
   "Properties should be indented under nodes."
   (tickscript--should-indent
@@ -208,6 +215,55 @@ batch
      (47 . tickscript-operator)
      (48 . tickscript-node))
 ))
+
+(ert-deftest tickscript--test-basic-dot ()
+  "Test that we don't break valid DOT."
+  (tickscript--should-cleanup-dot
+   "
+DOT:
+digraph medians {
+query3 -> median14;
+query3 -> mean15;
+query3 -> count16;
+count16 -> join21;
+}
+" "digraph medians {
+query3 -> median14;
+query3 -> mean15;
+query3 -> count16;
+count16 -> join21;
+}
+"))
+
+(ert-deftest tickscript--test-dot-needing-cleanup ()
+  "Test cleaning the broken DOT given by a running task."
+  (tickscript--should-cleanup-dot
+   "
+DOT:
+digraph medians {
+graph [throughput=\"0.00 batches/s\"];
+
+query3 [avg_exec_time_ns=\"0s\" batches_queried=\"0\" errors=\"0\" points_queried=\"0\" working_cardinality=\"0\" ];
+query3 -> count16 [processed=\"0\"];
+query3 -> mean15 [processed=\"0\"];
+query3 -> median14 [processed=\"0\"];
+
+count16 [avg_exec_time_ns=\"0s\" errors=\"0\" working_cardinality=\"0\" ];
+count16 -> join21 [processed=\"0\"];
+}
+" "digraph medians {
+graph [\"throughput=\\\"0.00 batches\\\/s\\\"\"];
+
+query3 [\"avg_exec_time_ns=\\\"0s\\\" batches_queried=\\\"0\\\" errors=\\\"0\\\" points_queried=\\\"0\\\" working_cardinality=\\\"0\\\" \"];
+query3 -> count16 [\"processed=\\\"0\\\"\"];
+query3 -> mean15 [\"processed=\\\"0\\\"\"];
+query3 -> median14 [\"processed=\\\"0\\\"\"];
+
+count16 [\"avg_exec_time_ns=\\\"0s\\\" errors=\\\"0\\\" working_cardinality=\\\"0\\\" \"];
+count16 -> join21 [\"processed=\\\"0\\\"\"];
+}
+"))
+
 
 (provide 'tickscript-mode-tests)
 ;;; tickscript-mode-tests.el ends here
