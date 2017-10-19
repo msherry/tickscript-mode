@@ -174,9 +174,11 @@ If unset, defaults to \"http://localhost:9092\"."
 
 (setq tickscript-properties
       '("align" "alignGroup" "as" "buffer" "byMeasurement" "cluster" "create"
-        "crit" "cron" "database" "every" "field" "fill" "flushInterval" "groupBy"
-        "groupByMeasurement" "keep" "level" "measurement" "offset" "period" "precision"
-        "quiet" "retentionPolicy" "tag" "tags" "usePointTimes" "writeConsistency"))
+        "crit" "cron" "database" "delimiter" "every" "field" "fill"
+        "flushInterval" "groupBy" "groupByMeasurement" "keep" "level"
+        "measurement" "offset" "on" "period" "precision" "quiet"
+        "retentionPolicy" "streamName" "tag" "tags" "tolerance" "usePointTimes"
+        "writeConsistency"))
 
 (setq tickscript-toplevel-nodes
       '("batch" "stream"))
