@@ -133,6 +133,27 @@ var my_custom = other_thing
         .as('day_udf')
 "))
 
+(ert-deftest tickscript--test-indent-within-parens ()
+  "Lines following an unclosed paren should indent to the column after the paren."
+
+  (tickscript--should-indent
+   "
+var pcts_of_medians = hour_median
+|join(day_median, week_median)
+.as('hour_median', 'day_median', 'week_median')
+|eval(lambda: \"hour_median.value\" / \"day_median.value\",
+lambda: \"hour_median.value\" / \"day_median.value\")
+.as('pct_of_daily_median', 'pct_of_weekly_median')
+"
+   "
+var pcts_of_medians = hour_median
+    |join(day_median, week_median)
+        .as('hour_median', 'day_median', 'week_median')
+    |eval(lambda: \"hour_median.value\" / \"day_median.value\",
+          lambda: \"hour_median.value\" / \"day_median.value\")
+        .as('pct_of_daily_median', 'pct_of_weekly_median')
+"))
+
 (ert-deftest tickscript--test-indent-comments ()
   "Comments should be indented at the level of the line above
 them, unless there is a blank line above, in which case they

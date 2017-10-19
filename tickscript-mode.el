@@ -204,7 +204,7 @@ If unset, defaults to \"http://localhost:9092\"."
 (setq tickscript-font-lock-keywords
       `(,
         ;; General keywords
-        (rx symbol-start (or "var") symbol-end)
+        (rx symbol-start (or "var" "lambda") symbol-end)
         ;; Node properties - start with "." to avoid collisions for e.g. "groupBy"
         (,(concat "\\.\\_<" (regexp-opt tickscript-properties t) "\\_>") . 'tickscript-property)
         ;; Chaining methods - like nodes, but not
@@ -450,8 +450,16 @@ meaning always increase indent on TAB and decrease on S-TAB."
 
 (defun tickscript-indent-in-continuation ()
   "Indentation for statements/expressions broken across multiple lines."
-  ;; TODO:
-  nil)
+  (let ((open-paren (nth 1 (syntax-ppss)))
+        (linum (line-number-at-pos)))
+    (save-excursion
+      (when open-paren
+        (goto-char open-paren)
+        ;; If open paren is on the current line, we're not in a continuation
+        (unless (eq linum (line-number-at-pos))
+          ;; (message "CONTINUATION")
+          ;; Found the open paren, indent to right after it
+          (1+ (current-column)))))))
 
 (defun tickscript-indent-comment-line ()
   "Indentation for comment lines."
