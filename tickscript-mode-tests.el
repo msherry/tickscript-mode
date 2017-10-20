@@ -145,20 +145,16 @@ var my_custom = other_thing
 
   (tickscript--should-indent
    "
-var pcts_of_medians = hour_median
+hour_median
 |join(day_median, week_median)
-.as('hour_median', 'day_median', 'week_median')
 |eval(lambda: \"hour_median.value\" / \"day_median.value\",
 lambda: \"hour_median.value\" / \"day_median.value\")
-.as('pct_of_daily_median', 'pct_of_weekly_median')
 "
    "
-var pcts_of_medians = hour_median
+hour_median
     |join(day_median, week_median)
-        .as('hour_median', 'day_median', 'week_median')
     |eval(lambda: \"hour_median.value\" / \"day_median.value\",
           lambda: \"hour_median.value\" / \"day_median.value\")
-        .as('pct_of_daily_median', 'pct_of_weekly_median')
 "))
 
 (ert-deftest tickscript--test-indent-comments ()
@@ -215,6 +211,26 @@ batch
      (47 . tickscript-operator)
      (48 . tickscript-node))
 ))
+
+(ert-deftest tickscript--test-font-locking-udf ()
+  "Test that UDF-related font locking is correct."
+  (tickscript--should-font-lock
+   "
+hour_batched
+    @ttest()
+        .field('duration')
+        .period(1w)
+        .alpha(0.001)
+        .prefix('week_')
+"
+   '((19 . tickscript-udf)               ;sigil
+     (20 . tickscript-udf)               ;UDF name
+     (36 . nil)                          ;property sigil (.)
+     (37 . tickscript-udf-param)         ;param with property name
+     (64 . tickscript-udf-param)         ;param with property name
+     (84 . tickscript-udf-param)         ;new param
+     (106 . tickscript-udf-param)        ;new param
+     )))
 
 (ert-deftest tickscript--test-basic-dot ()
   "Test that we don't break valid DOT."
