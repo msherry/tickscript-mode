@@ -197,16 +197,17 @@ If unset, defaults to \"http://localhost:9092\"."
       '("batch" "stream"))
 
 (setq tickscript-nodes
-      '("alert" "batch" "combine" "deadman" "default" "delete" "derivative"
-        "eval" "exclude" "flatten" "from" "groupBy" "httpOut" "httpPost"
-        "influxDBOut" "influxQL" "join" "k8sAutoscale" "kapacitorLoopback" "log" "noOp"
+      '("alert" "batch" "combine" "default" "delete" "derivative" "eval"
+        "exclude" "flatten" "from" "groupBy" "httpOut" "httpPost" "influxDBOut"
+        "influxQL" "join" "k8sAutoscale" "kapacitorLoopback" "log" "noOp"
         "query" "sample" "shift" "stateCount" "stateDuration" "stats" "stream"
         "union" "where" "window"))
 
 (setq tickscript-chaining-methods
-      '("bottom" "count" "cumulativeSum" "difference" "distinct" "elapsed"
-        "first" "holtWinters" "holtWintersWithFit" "last" "max" "mean" "median"
-        "min" "mode" "movingAverage" "percentile" "spread" "stddev" "sum" "top"))
+      '("bottom" "count" "cumulativeSum" "deadman" "difference" "distinct"
+        "elapsed" "first" "holtWinters" "holtWintersWithFit" "last" "max"
+        "mean" "median" "min" "mode" "movingAverage" "percentile" "spread"
+        "stddev" "sum" "top"))
 
 (puthash "groupBy" "group_by" tickscript-webhelp-case-map)
 (puthash "httpOut" "http_out" tickscript-webhelp-case-map)
@@ -773,6 +774,8 @@ Escapes it properly so `dot' will actually render it."
       (switch-to-buffer-other-window buffer-name)
       (erase-buffer)
       (set (make-local-variable 'font-lock-defaults) '(tickscript-font-lock-keywords))
+      (set (make-local-variable 'comment-start) "// ")
+      (set-syntax-table tickscript-mode-syntax-table)
       (font-lock-mode)
       (insert task)
       (when tickscript-render-dot-output
