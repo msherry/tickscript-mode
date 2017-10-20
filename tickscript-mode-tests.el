@@ -281,5 +281,21 @@ count16 -> join21 [\"processed=\\\"0\\\"\"];
 "))
 
 
+(ert-deftest tickscript--search-back-from-string ()
+  "Ensure that searching backwards from a string doesn't hang."
+  (let ((text "
+var SQL = '''SELECT \"duration\"
+             FROM \"db\".\"retention\".\"series\"
+             WHERE \"result\" = 'great'
+             AND \"foo\" = 'bar'
+             '''
+"))
+    (with-temp-buffer
+      (tickscript-mode)
+      (insert text)
+      (goto-char 50)
+      (should (eq (tickscript-last-node-pos) 'nil)))))
+
+
 (provide 'tickscript-mode-tests)
 ;;; tickscript-mode-tests.el ends here

@@ -403,7 +403,7 @@ If STOP-AT-NODE is true, the search stops once a node (or UDF) is hit."
         (forward-char))
     (let ((count 0)
           (node-count 0))
-      (while (not (or (> count 0) (> node-count 0) (<= (point) 0)))
+      (while (not (or (> count 0) (> node-count 0) (<= (point) 1)))
         (tickscript-safe-backward-sexp)
         (when (funcall fn)
           (setq count (1+ count)))
