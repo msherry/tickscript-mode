@@ -289,10 +289,12 @@ If unset, defaults to \"http://localhost:9092\"."
     map)
   "Keymap for `tickscript-mode'.")
 
-;; if backward-sexp gives an error, move back 1 char to move over the '('
+;; if backward-sexp gives an error, move back 1 char to move over the open
+;; paren.
 (defun tickscript-safe-backward-sexp ()
-  "Move backward by one sexp, ignoring errors.  Jump out of strings first."
-  (when (tickscript--in-string)
+  "Move backward by one sexp, ignoring errors.  Jump out of strings/comments first."
+  (when (or (tickscript--in-string)
+            (tickscript--in-comment))
     (goto-char (nth 8 (syntax-ppss))))
   (if (condition-case nil (backward-sexp) (error t))
       (ignore-errors (backward-char))))
