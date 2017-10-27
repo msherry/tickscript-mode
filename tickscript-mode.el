@@ -747,7 +747,9 @@ Escapes it properly so `dot' will actually render it."
   "Extract and return the DOT graph from the current buffer."
   (save-excursion
     (goto-char (point-min))
-    (re-search-forward "^DOT:$")
+    (condition-case nil
+        (re-search-forward "^DOT:$")
+      (error nil))
     (forward-line 1)
     (let* ((beg (point))
            (end (point-max))
