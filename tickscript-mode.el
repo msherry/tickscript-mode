@@ -116,6 +116,14 @@ If unset, defaults to \"http://localhost:9092\"."
   :group 'tickscript
   :safe 'booleanp)
 
+(defcustom tickscript-scale-images t
+  "Whether to scale the rendered DOT graphs to fit within the window bounds.
+
+Requires Emacs to be compiled with Imagemagick support."
+  :type 'boolean
+  :group 'tickscript
+  :safe 'booleanp)
+
 (defcustom tickscript-indent-trigger-commands
   '(indent-for-tab-command yas-expand yas/expand)
   "Commands that might trigger a `tickscript-indent-line' call."
@@ -756,7 +764,11 @@ Escapes it properly so `dot' will actually render it."
       (insert dot))))
 
 (defun tickscript-render-task-dot-to-buffer ()
-  "Extract the DOT graph from the current buffer, render it with Graphviz, and insert the image."
+  "Extract the DOT graph from buffer, render it with Graphviz, and display it.
+
+If Emacs is compiled with Imagemagick support and
+`tickscript-scale-images' is t, scales the image appropriately to
+fit within the bounds of the window."
   (interactive)
   (let* ((cleaned (tickscript--cleanup-dot (tickscript--extract-dot-from-buffer)))
          (tmpfile (format "/%s/%s.png" temporary-file-directory (make-temp-name "tickscript-")))
@@ -764,11 +776,14 @@ Escapes it properly so `dot' will actually render it."
     (shell-command cmd)
     (goto-char (point-max))
     (insert-char ?\n)
-    (let ((inhibit-read-only t)
-          (image (if (image-type-available-p 'imagemagick)
-                     (create-image tmpfile 'imagemagick nil
-                                   :max-width (truncate (* .9 (window-pixel-width))))
-                   (create-image tmpfile))))
+    (let* ((inhibit-read-only t)
+           (extra-args (if (and tickscript-scale-images (image-type-available-p 'imagemagick))
+                           `(imagemagick
+                            nil
+                            :max-width ,(truncate (* .9 (window-pixel-width)))
+                            :max-height ,(truncate (* 1.0 (window-pixel-width))))
+                         nil))
+           (image (apply #'create-image tmpfile extra-args)))
       (insert-image image))))
 
 
