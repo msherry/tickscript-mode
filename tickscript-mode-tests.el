@@ -71,6 +71,24 @@
      (let ((cleaned (tickscript--cleanup-dot (tickscript--extract-dot-from-buffer))))
        (should (equal cleaned ,to)))))
 
+(defmacro tickscript--test-thing-at-point (text pos-things)
+  "Assert that, at each position in TEXT, items in POS-THINGS are correct."
+  `(with-temp-buffer
+     (tickscript-mode)
+     (insert ,text)
+     (dolist (pair ,pos-things)
+       (let ((pos (car pair))
+             (thing (cdr pair)))
+         (let ((fn (pcase thing
+                     ('node #'tickscript-node-at-point)
+                     ('chaining-method #'tickscript-chaining-method-at-point)
+                     ('udf #'tickscript-udf-at-point)
+                     ('property #'tickscript-property-at-point)
+                     ('udf-param #'tickscript-udf-param-at-point)
+                     (other (lambda () nil)))))
+           (goto-char pos)
+           (should (funcall fn)))))))
+
 (ert-deftest tickscript--test-indent-properties ()
   "Properties should be indented under nodes."
   (tickscript--should-indent
@@ -295,6 +313,32 @@ var SQL = '''SELECT \"duration\"
       (insert text)
       (goto-char 50)
       (should (eq (tickscript-last-node-pos) 'nil)))))
+
+(ert-deftest tickscript--should-find-things-at-point ()
+  "Ensure that we recognize things at point correctly."
+  (tickscript--test-thing-at-point
+"groupBy
+.period
+|groupBy
+.groupBy
+|cumulativeSum
+@fff
+.udfParam
+"
+   '((1 . node)
+     (9 . property)
+     (10 . property)
+     (17 . node)                       ;sigil
+     (18 . node)
+     (26 . property)                   ;sigil
+     (27 . property)
+     (35 . chaining-method)            ;sigil
+     (36 . chaining-method)
+     (50 . udf)                        ;sigil
+     (51 . udf)
+     (55 . udf-param)
+     (56 . udf-param)
+     )))
 
 
 (provide 'tickscript-mode-tests)
