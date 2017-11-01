@@ -323,11 +323,11 @@ Requires Emacs to be compiled with Imagemagick support."
 
 TYPE identifies a list of keyword strings."
   (let ((word (current-word t))
-        (kw-list (pcase type
-                   ('toplevel tickscript-toplevel-nodes)
-                   ('node tickscript-nodes)
-                   ('chaining-method tickscript-chaining-methods)
-                   ('property tickscript-properties))))
+        (kw-list (cond
+                   ((eq type 'toplevel) tickscript-toplevel-nodes)
+                   ((eq type 'node) tickscript-nodes)
+                   ((eq type 'chaining-method) tickscript-chaining-methods)
+                   ((eq type 'property) tickscript-properties))))
     (and (member word kw-list)
          (not (looking-at "("))
          (not (or (tickscript--in-comment)
@@ -421,7 +421,7 @@ be preceded by the \".\" sigil."
 If STOP-AT-NODE is true, the search stops once a node (or UDF) is hit."
   (save-excursion
     ;; Skip the sigil, if we're on one
-    (if (looking-at "\\.|\|@")
+    (if (looking-at "|\\|@\\|\\.")
         (forward-char))
     (let ((count 0)
           (node-count 0))

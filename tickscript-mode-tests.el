@@ -79,13 +79,12 @@
      (dolist (pair ,pos-things)
        (let ((pos (car pair))
              (thing (cdr pair)))
-         (let ((fn (pcase thing
-                     ('node #'tickscript-node-at-point)
-                     ('chaining-method #'tickscript-chaining-method-at-point)
-                     ('udf #'tickscript-udf-at-point)
-                     ('property #'tickscript-property-at-point)
-                     ('udf-param #'tickscript-udf-param-at-point)
-                     (other (lambda () nil)))))
+         (let ((fn (cond
+                     ((eq thing 'node) #'tickscript-node-at-point)
+                     ((eq thing 'chaining-method) #'tickscript-chaining-method-at-point)
+                     ((eq thing 'udf) #'tickscript-udf-at-point)
+                     ((eq thing 'property) #'tickscript-property-at-point)
+                     ((eq thing 'udf-param) #'tickscript-udf-param-at-point))))
            (goto-char pos)
            (should (funcall fn)))))))
 
@@ -340,6 +339,26 @@ var SQL = '''SELECT \"duration\"
      (56 . udf-param)
      )))
 
+
+(ert-deftest tickscript--last-identifier ()
+  "Ensure that we recognize the parent object correctly."
+  (let ((text "
+|groupBy
+.align
+@ttest
+.my_param('g')
+"))
+    (with-temp-buffer
+      (tickscript-mode)
+      (insert text)
+      (goto-char 8)
+      (should (eq (tickscript-last-node-pos t) 3))
+      (goto-char 9)
+      (should (eq (tickscript-last-node-pos t) 3))
+      (goto-char 24)
+      (should (eq (tickscript-last-udf-pos t) 19))
+      (goto-char 25)
+      (should (eq (tickscript-last-udf-pos t) 19)))))
 
 (provide 'tickscript-mode-tests)
 ;;; tickscript-mode-tests.el ends here
