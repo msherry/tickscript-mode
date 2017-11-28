@@ -229,12 +229,12 @@ Requires Emacs to be compiled with Imagemagick support."
 
 (setq tickscript-properties
       '("align" "alignGroup" "as" "buffer" "byMeasurement" "channel" "cluster"
-        "create" "crit" "cron" "database" "delimiter" "every" "exclude" "field"
-        "fill" "flushInterval" "groupBy" "groupByMeasurement" "id" "info"
-        "keep" "level" "measurement" "message" "noRecoveries" "offset" "on"
-        "period" "post" "precision" "quiet" "retentionPolicy" "slack"
-        "stateChangesOnly" "streamName" "tag" "tags" "tcp" "tolerance"
-        "usePointTimes" "warn" "writeConsistency"))
+        "create" "crit" "cron" "database" "delimiter" "details" "every"
+        "exclude" "field" "fill" "flushInterval" "groupBy" "groupByMeasurement"
+        "id" "info" "keep" "level" "measurement" "message" "noRecoveries"
+        "offset" "on" "pagerDuty" "period" "post" "precision" "prefix" "quiet"
+        "retentionPolicy" "slack" "stateChangesOnly" "streamName" "tag" "tags"
+        "tcp" "tolerance" "usePointTimes" "warn" "writeConsistency"))
 
 (puthash "groupBy" "group_by" tickscript-webhelp-case-map)
 (puthash "httpOut" "http_out" tickscript-webhelp-case-map)
