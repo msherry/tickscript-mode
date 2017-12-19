@@ -110,6 +110,15 @@ If unset, defaults to \"http://localhost:9092\"."
   :group 'tickscript
   :safe 'stringp)
 
+(defcustom tickscript-kapacitor-version "1.4"
+  "The version of Kapacitor against which to write code/check docs."
+  :type '(choice
+          (const :tag "1.2" "1.2")
+          (const :tag "1.3" "1.3")
+          (const :tag "1.4" "1.4"))
+  :group 'tickscript
+  :safe 'stringp)
+
 (defcustom tickscript-render-dot-output t
   "Whether to render DOT output with Graphviz when executing tickscript-show-task."
   :type 'boolean
@@ -273,7 +282,7 @@ Requires Emacs to be compiled with Imagemagick support."
        ;; Numbers
        (,(rx symbol-start (? "-") (1+ digit) (optional "\." (1+ digit))) . 'tickscript-number)
        ;; Booleans
-       (,(rx symbol-start (or "TRUE" "FALSE" symbol-end)) . 'tickscript-boolean)
+       (,(rx symbol-start (or "TRUE" "FALSE" "AND" "OR" symbol-end)) . 'tickscript-boolean)
        ;; Variable declarations
        ("\\_<\\(?:var\\)\\_>[[:space:]]+\\([[:alpha:]]\\(?:[[:alnum:]]\\|_\\)*\\)" (1 'tickscript-variable nil nil))
        ;; Operators
@@ -484,6 +493,7 @@ current chain if point is not on a UDF."
           (tickscript-udf-at-point))))))
 
 (defmacro tickscript--at-bol (&rest body)
+  "Execute BODY forms from the beginning of the line."
   `(progn
      (save-excursion
        (beginning-of-line)
@@ -579,8 +589,9 @@ be part of user-defined functions."
      0)))
 
 (defun tickscript-indent-dedent-line ()
-  "Deindent by `tickscript-indent-offset' spaces regardless of
-current indentation context."
+  "Deindent by `tickscript-indent-offset' spaces.
+
+This is done regardless of current indentation context."
   (interactive)
   (indent-line-to (max 0 (- (current-indentation) tickscript-indent-offset))))
 
@@ -615,7 +626,10 @@ current indentation context."
       (move-to-column (+ (current-indentation) point-offset)))))
 
 (defun tickscript-move-line-or-region-down (&optional beg end)
-  "Move the current line or active region down."
+  "Move the current line or active region down.
+
+BEG and END define the region, or are taken from the current
+region if not specified."
   (interactive
    (if (use-region-p)
        (list (region-beginning) (region-end))
@@ -625,7 +639,10 @@ current indentation context."
     (tickscript--move-line-vertically 1)))
 
 (defun tickscript-move-line-or-region-up (&optional beg end)
-  "Move the current line or active region down."
+  "Move the current line or active region down.
+
+BEG and END define the region, or are taken from the current
+region if not specified."
   (interactive
    (if (use-region-p)
        (list (region-beginning) (region-end))
@@ -874,7 +891,8 @@ render the .dot output into a graph in the buffer."
                  (or (tickscript-node-at-point)
                      chaining-method-or-property))
       (error "Could not find help topic for thing at point"))
-    (let ((url (format "https://docs.influxdata.com/kapacitor/v1.3/nodes/%s_node/"
+    (let ((url (format "https://docs.influxdata.com/kapacitor/v%s/nodes/%s_node/"
+                       tickscript-kapacitor-version
                        (tickscript--downcase-for-webhelp node))))
       (when chaining-method-or-property
         (setq url (format "%s#%s" url (tickscript--downcase-for-webhelp chaining-method-or-property))))
