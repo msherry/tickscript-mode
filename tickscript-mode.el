@@ -74,8 +74,11 @@
 
 ;;; Code:
 
+(require 'thingatpt)
+
 (defvar tickscript-font-lock-keywords nil)
 (defvar tickscript-properties nil)
+(defvar tickscript-lambda-able nil "Tickscript nodes/properties that can accept lambda functions.")
 (defvar tickscript-toplevel-nodes nil)
 (defvar tickscript-nodes nil)
 (defvar tickscript-chaining-methods nil)
@@ -238,12 +241,14 @@ Requires Emacs to be compiled with Imagemagick support."
 
 (setq tickscript-properties
       '("align" "alignGroup" "as" "buffer" "byMeasurement" "channel" "cluster"
-        "create" "crit" "cron" "database" "delimiter" "details" "every"
+        "create" "crit" "critReset" "cron" "database" "delimiter" "details" "every"
         "exclude" "field" "fill" "flushInterval" "groupBy" "groupByMeasurement"
-        "id" "info" "keep" "level" "measurement" "message" "noRecoveries"
+        "id" "info" "infoReset" "keep" "level" "measurement" "message" "noRecoveries"
         "offset" "on" "pagerDuty" "period" "post" "precision" "prefix" "quiet"
         "retentionPolicy" "slack" "stateChangesOnly" "streamName" "tag" "tags"
-        "tcp" "tolerance" "usePointTimes" "warn" "writeConsistency"))
+        "tcp" "tolerance" "unit" "usePointTimes" "warn" "warnReset" "writeConsistency"))
+
+(setq tickscript-lambda-able '("alert" "eval" "stateCount"))
 
 (puthash "groupBy" "group_by" tickscript-webhelp-case-map)
 (puthash "httpOut" "http_out" tickscript-webhelp-case-map)
@@ -879,24 +884,32 @@ render the .dot output into a graph in the buffer."
 (defun tickscript--downcase-for-webhelp (word)
   (or (gethash word tickscript-webhelp-case-map) (downcase word)))
 
+(defun tickscript--url-for-help ()
+  "Find things at point that we can search for help on, and return an appropriate URL."
+  (let* ((base-url (format "https://docs.influxdata.com/kapacitor/v%s/" tickscript-kapacitor-version))
+         (node (tickscript-current-node))
+         (chaining-method-or-property (or (tickscript-chaining-method-at-point)
+                                          (tickscript-property-at-point))))
+    (cond ((and node
+                (or (tickscript-node-at-point)
+                    chaining-method-or-property))
+           (let ((url (format "%s/nodes/%s_node/" base-url (tickscript--downcase-for-webhelp node))))
+             (when chaining-method-or-property
+               (setq url (format "%s#%s" url (tickscript--downcase-for-webhelp chaining-method-or-property))))
+             url))
+          ((and node
+                (member node tickscript-lambda-able)
+                (string= (substring-no-properties (word-at-point)) "lambda"))
+           (format "%s/tick/expr" base-url))
+          (t nil))))
+
 (defun tickscript-get-help ()
   "Gets help for the node or property at point, if any."
   (interactive)
-  (let* ((node (tickscript-current-node))
-         (chaining-method-or-property (or (tickscript-chaining-method-at-point)
-                                          (tickscript-property-at-point))))
-    ;; We must have found a containing node, and either be pointing at it, or
-    ;; have found a legitimate chaining method/property child
-    (unless (and node
-                 (or (tickscript-node-at-point)
-                     chaining-method-or-property))
+  (let ((help-url (tickscript--url-for-help)))
+    (unless help-url
       (error "Could not find help topic for thing at point"))
-    (let ((url (format "https://docs.influxdata.com/kapacitor/v%s/nodes/%s_node/"
-                       tickscript-kapacitor-version
-                       (tickscript--downcase-for-webhelp node))))
-      (when chaining-method-or-property
-        (setq url (format "%s#%s" url (tickscript--downcase-for-webhelp chaining-method-or-property))))
-      (browse-url url))))
+    (browse-url help-url)))
 
 ;;;###autoload
 (define-derived-mode tickscript-mode prog-mode "Tickscript"
